@@ -10,6 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(rnoaa)
+library(modelr)
 ```
 
 ## Problem 1
@@ -27,3 +28,43 @@ weather_df =
   select(name, id, everything())
 ```
 
+Bootstrap
+```{r}
+set.seed(123)  
+boot_results =
+  weather_df |>
+  modelr::bootstrap(n = 5000) |>
+  mutate(
+    model = map(strap, \(df) lm(tmax ~ tmin, data = df)), 
+    r_squared = map_dbl(model, ~ broom::glance(.x)$r.squared), 
+    log_beta = map_dbl(model, ~ log(coef(.x)[1] * coef(.x)[2])) 
+  )
+```
+
+Distributions
+```{r}
+# Plot the distribution of R-squared
+ggplot(boot_results, aes(x = r_squared)) +
+  geom_histogram(bins = 30, color = "black", fill = "blue", alpha = 0.7) +
+  labs(title = "Bootstrap Distribution of R-squared", x = "R-squared", y = "Frequency")
+
+# Plot the distribution of log(beta0 * beta1)
+ggplot(boot_results, aes(x = log_beta)) +
+  geom_histogram(bins = 30, color = "black", fill = "red", alpha = 0.7) +
+  labs(title = "Bootstrap Distribution of log(beta0 * beta1)", x = "log(beta0 * beta1)", y = "Frequency")
+```
+
+The distribution of R-squared appears to be approximately normal. The values of R-squared range between 0.88 and 0.94, with the highest frequency occurring aroung 0.91.
+
+The distribution of log beta is also approximately normal. The values of log beta range from approximately 1.95 to 2.10, and the distribution is centered around approximately 2.00.
+
+95% confidence intervals
+```{r}
+ci_r = quantile(boot_results$r_squared, c(0.025, 0.975))
+ci_log = quantile(boot_results$log_beta, c(0.025, 0.975))
+
+print(ci_r)
+print(ci_log)
+```
+
+## Problem 2
