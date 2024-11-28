@@ -68,3 +68,22 @@ print(ci_log)
 ```
 
 ## Problem 2
+
+```{r}
+us_homicide = 
+  read_csv("./data/homicide-data.csv") |>
+  janitor::clean_names()
+```
+
+```{r}
+count_homicide =
+  us_homicide |>
+  mutate(
+    city_state = paste(city, state, sep = ","),
+    solved = ifelse(disposition == "Closed by arrest", 1, 0)
+  ) |>
+   filter(!city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL"),
+         victim_race %in% c("White", "Black"))
+
+```
+
