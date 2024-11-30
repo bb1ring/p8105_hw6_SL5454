@@ -70,20 +70,59 @@ print(ci_log)
 ## Problem 2
 
 ```{r}
-us_homicide = 
-  read_csv("./data/homicide-data.csv") |>
-  janitor::clean_names()
-```
-
-```{r}
-count_homicide =
-  us_homicide |>
+us_homicide =
+  read_csv("./data/homicide-data.csv", na = c("Unknown"))|>
+  janitor::clean_names()|>
   mutate(
-    city_state = paste(city, state, sep = ","),
+    victim_age = as.numeric(victim_age),
+    city_state = str_c(city, state, sep = ", "),
     solved = ifelse(disposition == "Closed by arrest", 1, 0)
-  ) |>
-   filter(!city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL"),
-         victim_race %in% c("White", "Black"))
+    )|>
+  filter(!city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL"),
+         victim_race %in% c("White", "Black")) 
+```
+
+Logistic regression for Baltimore
+```{r}
+baltimore = 
+  us_homicide |>
+  filter(city_state == "Baltimore, MD")
+
+baltimore_model = 
+  glm(solved ~ victim_age + victim_sex + victim_race, data = baltimore) 
+
+baltimore_model |>
+  broom::tidy(conf.int = TRUE, exponentiate = TRUE) |>
+  filter(term == "victim_sexMale") |>
+  select(term, estimate, conf.low, conf.high)
 
 ```
 
+Logistic regression for each city
+```{r}
+city_models =
+  us_homicide |>
+  group_by(city_state) |>
+  nest() |>
+  mutate(
+    model = map(data, \(x) glm(solved ~ victim_age + victim_sex + victim_race, data = x)),
+    results = map(model, broom::tidy, conf.int = TRUE, exponentiate = TRUE)
+  ) |>
+  unnest(results) |>
+  filter(term == "victim_sexMale") |>
+  select(city_state, estimate, conf.low, conf.high)
+
+print(city_models)
+```
+
+Plot the estimated ORs and their CIs for each city
+```{r}
+city_models |>
+  ggplot(aes(x = estimate, y = reorder(city_state, estimate), xmin = conf.low, xmax = conf.high)) +
+  geom_point() +
+  geom_errorbar() +
+  labs(title = "Odds Ratios for Solving Homicides",
+       y = "City", x = "Adjusted Odds Ratio")
+```
+
+Albuquerque, NM has the largest OR for solving homicides. New York, NY has the lowest OR for solving homicides. The first four cities have ORs greater than 1, which indicate that male victims are more likely to have their homicides solved than female victims. Most cities have ORs close to 1, with the confidence intervals either overlapping 1 or extending to the right or left. The overall trend suggests that females may have high homicide resolution in most city.
