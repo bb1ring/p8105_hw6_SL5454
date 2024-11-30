@@ -126,3 +126,18 @@ city_models |>
 ```
 
 Albuquerque, NM has the largest OR for solving homicides. New York, NY has the lowest OR for solving homicides. The first four cities have ORs greater than 1, which indicate that male victims are more likely to have their homicides solved than female victims. Most cities have ORs close to 1, with the confidence intervals either overlapping 1 or extending to the right or left. The overall trend suggests that females may have high homicide resolution in most city.
+
+## Problem 3
+```{r}
+baby_bw =
+  read_csv("./data/birthweight.csv", na = c("", "NA", "."))|>
+  janitor::clean_names() |>
+  mutate(
+    babysex = factor(babysex),
+    frace = factor(frace),
+    mrace = factor(mrace),
+    malform = factor(malform),
+    .drop = TRUE
+  )
+```
+
