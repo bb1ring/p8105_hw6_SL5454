@@ -141,3 +141,25 @@ baby_bw =
   )
 ```
 
+Fit a regression model
+
+```{r}
+bw_model = lm(bwt ~ delwt + smoken + babysex + gaweeks + malform, data = baby_bw)
+
+bw_model |>
+  broom::tidy()
+
+baby_bw |>
+  add_predictions(bw_model) |>
+  add_residuals(bw_model) |>
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals")
+```
+
+I hypothesize that the birthweight is influenced by factors like mother's weight at delievery, cigarette consumption, baby's sex, gestational age in weeks, and presence of malformations.
+From the plot, we can tell that the residuals are randomly scattered around zero with no discernible pattern. Thus, the model fits well.
+
+
+
