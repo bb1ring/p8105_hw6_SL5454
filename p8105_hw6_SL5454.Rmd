@@ -161,5 +161,54 @@ baby_bw |>
 I hypothesize that the birthweight is influenced by factors like mother's weight at delievery, cigarette consumption, baby's sex, gestational age in weeks, and presence of malformations.
 From the plot, we can tell that the residuals are randomly scattered around zero with no discernible pattern. Thus, the model fits well.
 
+Model 1: Using birth length and gestational age
+```{r}
+model1 = lm(bwt ~ blength + gaweeks, data = baby_bw)
 
+model1 |>
+   broom::tidy()
+```
 
+Model 2: Using head circumference, length, sex, and interactions
+```{r}
+model2 = lm(bwt ~ bhead * blength * babysex, data = baby_bw)
+
+model2 |>
+  broom::tidy()
+```
+
+Compare models using cross-validation
+```{r}
+cv_df = 
+  crossv_mc(baby_bw, 100) |> 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)
+  )
+
+cv_result = 
+  cv_df |> 
+  mutate(
+    my_model = map(train, \(x) lm(bwt ~ delwt + smoken + babysex + gaweeks + malform, data = x)),
+    model_1= map(train, \(x) lm(bwt ~ blength + gaweeks, data = x)),
+    model_2 = map(train, \(x) lm(bwt ~ bhead * blength * babysex, data = x)),
+  ) |> 
+  mutate(
+    rmse_my = map2_dbl(my_model, test, rmse),
+    rmse_1 = map2_dbl(model_1, test, rmse),
+    rmse_2 = map2_dbl(model_2, test, rmse)
+  )
+
+cv_result |> 
+  select(starts_with("rmse")) |> 
+  pivot_longer(
+    everything(),
+    names_to = "model", 
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) |> 
+  ggplot(aes(x = model, y = rmse)) + 
+  geom_violin()
+```
+
+The second model using head circumference, length, sex, and all interactions has the lowest median RMSE, which indicates that it performs well.
